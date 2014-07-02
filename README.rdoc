@@ -33,3 +33,38 @@ def self.to_csv(options={})
 
 	<%= link_to "CSV", products_path(format: "csv") %>
 	<%= link_to "xls", products_path(format: "xls") %>
+steps to upload as CSV
+======================
+
+in model.rb add
+
+	def self.import(file)
+ 	 allowed_attributes = [ "id","name","released_on","price","created_at","updated_at"]
+ 	 spreadsheet = open_spreadsheet(file)
+ 	 header = spreadsheet.row(1)
+  	(2..spreadsheet.last_row).each do |i|
+  	  row = Hash[[header, spreadsheet.row(i)].transpose]
+   	 product = find_by_id(row["id"]) || new
+   	 product.attributes = row.to_hash.select { |k,v| allowed_attributes.include? k }
+   	 product.save!
+ 	 end
+	end
+
+
+	def self.open_spreadsheet(file)
+		case File.extname(file.original_filename)
+		when ".csv" then Roo::Csv.new(file.path, nil,:ignore)
+			when ".xls" then Roo::Excel.new(file.path, nil,:ignore)
+				when ".xlsx" then Roo::Excel.new(file.path, nil,:ignore)
+				else raise "unknown file type: #{file.original_filename}"
+				end
+			end
+
+
+in index add
+
+<h2>Import Products</h2>
+<%= form_tag import_products_path, multipart: true do %>
+ <%= file_field_tag :file %>
+ <%= submit_tag "import" %>
+ <% end %>
